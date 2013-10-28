@@ -1,23 +1,14 @@
 
 // Import modules
-var request = require('request'); 
-var crypto = require('crypto');
+var request = require('request'); // Requests for API.
+var crypto = require('crypto'); // For hashing
+var SerialPort = require("serialport").SerialPort // Serial Arduino ports
+var spawn = require('child_process').spawn // Child process for python video 
 
 // Global variables 
 var API_URL = 'http://145.89.128.41/projecten/website/api/';
 var RFID_KEY = '';
 var USER_DATA = ''
-
-function createChellangeHash(){
-	var hash = crypto.createHash('md5').update('randomchallangehash').digest("hex"); // Change what you hash into user and challange ID
-	return hash
-}
-
-
-// 
-function checkinUser(RFID_KEY){
-	
-}
 
 // Local API setup
 var express = require('express'); // Framework 
@@ -50,29 +41,99 @@ web.get('/user', function(req, res) {
 });
 
 // TODO: Serve other pages here too... 
-
 // Local port for listing to requests
 web.listen(8000);
+console.log('Serving pages on: http://localhost:8000')
+
+
+
 
 // Setup serial port for RFID check.
-var SerialPort = require("serialport").SerialPort
-var arduino = new SerialPort("/dev/tty.usbmodem641", { baudrate: 9600 });
-var receivedData = "";
+var rfidreader = new SerialPort("/dev/tty.usbmodem641", { baudrate: 9600 });
+if (rfidreader){
+	var receivedData = "";
 
-arduino.on("open", function () {
-  	arduino.on('data', function(data) {
- 		
- 		receivedData += data.toString().replace('\r', '').replace('\n', '');
+	rfidreader.on("open", function () {
+	  	rfidreader.on('data', function(data) {
+	 		
+	 		receivedData += data.toString().replace('\r', '').replace('\n', '');
 
- 		if (receivedData.length == 10){
- 			var key = receivedData.slice(-10)
- 			RFID_KEY = key; // Set RFID key globally 
-			console.log(key)
- 			receivedData = "";
- 		} else if (receivedData.length >= 10) {
- 			receivedData = "";
- 		}
-  	});  
-});
+	 		if (receivedData.length == 10){
+	 			var key = receivedData.slice(-10)
+	 			RFID_KEY = key; // Set RFID key globally 
+				console.log(key)
+	 			receivedData = "";
+	 		} else if (receivedData.length >= 10) {
+	 			receivedData = "";
+	 		}
+	  	});  
+	});
+}
+
+// Setup serial port for sensors.
+var direction = 'R'
+var oldvalues = new Array(2);
+var start_record_time;
+var start_detect_time;
+var receivedSensorData;
+var receivedSensorDataSeperator = '\r\n'
+
+var sensorreader = new SerialPort("/dev/tty.usbmodem641", { baudrate: 9600 });
+if (sensorreader){
+
+	sensorreader.on("open", function () {
+	  	sensorreader.on('data', function(d) {
+	 		
+	  		receivedSensorData += d.toString()
+
+	  		if (receivedSensorData.indexOf(receivedSensorDataSeperator) != -1){
+	  			// console.log(d);
+		 		var newvalues = receivedSensorData.split(':'); // Parse this until a line ending character is found
+
+		 		var left_old_dist = parseInt(oldvalues[1]);
+		 		var left_new_dist = parseInt(newvalues[1]);
+				var right_old_dist = parseInt(oldvalues[2]);
+		 		var right_new_dist = parseInt(newvalues[2]);
+
+		 		var time_dif = newvalues[0] - start_record_time;
+		 		var detect_time_dif = newvalues[0] - start_detect_time;
+
+		 		oldvalues = newvalues; // Cast new values to the old ones for the next loop
+
+		 		if (time_dif > start_record_time){
+			 		if (direction = 'R'){
+			 			if(right_new_dist < right_old_dist && right_old_dist - right_new_dist > 40 && detect_time_dif > 250) {
+							detect_time_dif = int(new_value[0]);
+						}
+
+			 			if(right_new_dist < right_old_dist && right_old_dist - right_new_dist > 40 and detectTime_dif < 250) {
+							console.log("Skater passed right");
+							start_record_time = parseInt(newvalues[1]);
+						}
+						// Start movie here
+						// Spawn python script for recording video.
+				 		//spawn('python', ['/pathtoscript', '-c', 'camerapath', '-n', 'filename', '-d', 'duration']);
+			 		} 
+
+					if (direction = 'L'){
+						if(left_new_dist < left_old_dist && left_old_dist - left_new_dist > 40 && detect_time_dif > 250) {
+							detect_time_dif = int(new_value[0]);
+						}
+
+			 			if(right_new_dist < right_old_dist && right_old_dist-right_new_dist > 40 and detectTime_dif < 250) {
+							console.log("Skater passed left");
+							start_record_time = parseInt(newvalues[1]);
+						}
+						// Start movie here
+						// Spawn python script for recording video.
+				 		//spawn('python', ['/pathtoscript', '-c', 'camerapath', '-n', 'filename', '-d', 'duration']);
+			 		} 
+				}
+				receivedSensorData = '' // Empty received data buffer
+	  		}
+	  	});  
+	});
+}
+
 
 
