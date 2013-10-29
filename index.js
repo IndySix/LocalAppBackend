@@ -6,12 +6,16 @@ var serialport = require("serialport")
 var SerialPort = serialport.SerialPort // Serial Arduino ports
 var spawn = require('child_process').spawn // Child process for python video 
 
+// Config USB Serial ports
+var rfidReaderPath = "/dev/tty.usbmodem641"
+var sensorReaderPath = "/dev/tty.usbmodem441"
+
 // Global variables 
 var API_URL = 'http://145.89.128.41/projecten/website/api/';
 var RFID_KEY = '';
 var USER_DATA = ''
 
-// Local API setup
+// Local server setup for API
 var express = require('express'); // Framework 
 var web = express(); // Setup app
 web.use(express.bodyParser()); // Configure POST parser
@@ -47,15 +51,20 @@ web.listen(8000);
 console.log('Serving pages on: http://localhost:8000')
 
 // Setup serial port for RFID check.
-var rfidreader = new SerialPort("/dev/tty.usbmodem441", { baudrate: 9600 , parser: serialport.parsers.readline("\r\n")});
+var rfidreader = new SerialPort(rfidReaderPath, { baudrate: 9600 , parser: serialport.parsers.readline("\r\n")});
 if (rfidreader){
 	rfidreader.on("open", function () {
-	  	rfidreader.on('data', function(data) {s	 		
-	 			var key = data.slice(10);
-	 			console.log(key);
-	 			RFID_KEY = key; // Set RFID key globally 
+	  	rfidreader.on('data', function(data) {	 		
+ 			var key = data;
+ 			console.log("Starting challenge for: " + key);
+ 			setTimeout(function() { finishChallenge(key) }, 5000)
+ 			RFID_KEY = key; // Set RFID key globally 
 	  	});  
 	});
+}
+
+function finishChallenge(key){
+	console.log('Finished challenge for: ' + key)
 }
 
 // Setup serial port for sensors.
@@ -64,7 +73,7 @@ var oldvalues = new Array(2);
 var start_record_time = 0;
 var start_detect_time = 0;
 
-var sensorreader = new SerialPort("/dev/tty.usbmodem641", { baudrate: 9600 , parser: serialport.parsers.readline("\r\n") });
+var sensorreader = new SerialPort(sensorReaderPath, { baudrate: 9600 , parser: serialport.parsers.readline("\r\n") });
 if (sensorreader){
 
 	sensorreader.on("open", function () {
