@@ -1,6 +1,6 @@
 // Config USB Serial ports
-var rfidReaderPath = "/dev/tty.usbmodem411"
-var sensorReaderPath = "/dev/tty.usbmodem641"
+var rfidReaderPath = "/dev/tty.usbmodem641"
+var sensorReaderPath = "/dev/tty.usbmodem441"
 
 // Globals
 RFID_KEY = '';
@@ -10,7 +10,7 @@ RESPONSE_DATA_getKingPart = '{ "status" : "fail", "data" : {} }'
 RESPONSE_DATA_getChallengeStatus = '{ "status" : "fail", "data" : {} }'
 CHALLENGE = false;
 // Website API location
-var API_URL = 'http://145.89.128.44/projecten/website/api/';
+var API_URL = 'http://145.89.128.74/projecten/website/api/';
 
 // Import modules
 var request = require('request'); // Requests for API.
@@ -27,22 +27,23 @@ web.use(express.urlencoded());
 
 // GET user data and return it for the bigger view
 web.get('/checkinUser', function(req, res) {
-	console.log('REQUEST: /checkinUser')
+	console.log('\033[33mREQ:\033[0m /checkinUser')
 	// If RFID is present, get the user based on the RFID KEY
 	if (RFID_KEY && CHALLENGE == false){
 		CHALLENGE = true;
 		r = API_URL + 'checkinUser/' + RFID_KEY
-		console.log('GET at: ' + r);
+		console.log('\033[31mGET: \033[0m' + r);
 		request(r, function (error, response, body) {
 			if (!error && response.statusCode == 200) {
 				RESPONSE_DATA_checkinUser = body; // Set user data for returning 
-				console.log(body);
+				console.log("\033[32mRES: \033[0m" + body);
 
 				if (body.status != 'fail'){
 					var challengeTimeout = JSON.parse(RESPONSE_DATA_checkinUser).data.level.playTime * 1000
-					console.log("Starting challenge for: " + RFID_KEY + ", timeout: " + challengeTimeout);
+					console.log("\033[34mStarting challenge for: \033" + RFID_KEY + ", timeout: " + challengeTimeout);
 					setTimeout(function() { finishChallenge(RFID_KEY) }, challengeTimeout)
 					setTimeout(testChallenge, 5000);
+					
 				}
 			} 
 		})
@@ -60,27 +61,27 @@ web.get('/checkinUser', function(req, res) {
 
 
 function finishChallenge(key){
-	console.log('Finished challenge for: ' + key)
+	console.log('\033[34mFinished challenge for: \033' + key)
 	RFID_KEY = ''
 	RESPONSE_DATA_checkinUser = '{ "status" : "fail", "data" : {} }'
 	CHALLENGE = false;
 }
 
 function testChallenge(){
-	console.log('Testing challange')
+	console.log('\033[34mTesting challenge for: \033' + RFID_KEY)
 	RESPONSE_DATA_getChallengeStatus = '{ "status" : "success", "data" : "' + Math.floor((Math.random()*1000)+1) + '"}'
-	finishChallenge(RFID_KEY);
+	finishChallenge(RFID_KEY)
 }
 
 
 web.get('/latestResultsParts/grind', function(req, res) {
 	r = API_URL + 'latestResultsParts/grind'
-	console.log('GET: ' + r);
+	console.log('\033[33mREQ:\033[0m /latestResultsParts/grind');
 
 	request(r, function (error, response, body) {
 		if (!error && response.statusCode == 200) {
 			RESPONSE_DATA_latestResultParts = body; // Set user data for returning 
-			console.log('RESPONSE: ' + body);
+			console.log('\033[31mRES:\033' + body);
 		} 
 	})
 
@@ -94,12 +95,12 @@ web.get('/latestResultsParts/grind', function(req, res) {
 
 web.get('/getKingPart/grind', function(req, res) {	
 	r = API_URL + 'getKingPart/grind'
-	console.log('GET at: ' + r);
+	console.log('\033[33mREQ:\033[0m /getKingPart/grind');
 	
 	request(r, function (error, response, body) {
 		if (!error && response.statusCode == 200) {
 			RESPONSE_DATA_getKingPart = body; // Set user data for returning 
-			console.log('RESPONSE: ' + body);
+			console.log('\033[31mRES:\033' + body);
 		} 
 	})
 
@@ -111,13 +112,16 @@ web.get('/getKingPart/grind', function(req, res) {
 	res.end()
 });
 
-web.get('/getChallengeStatus', function(req, res) {		
+web.get('/getChallengeStatus', function(req, res) {	
+	console.log('\033[33mREQ:\033[0m /getChallengeStatus');
+
 	// Build JSON response
 	res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "X-Requested-With"); 
 	res.writeHead(200, { 'Content-Type': 'application/json' }); 
 	res.write(RESPONSE_DATA_getChallengeStatus);
 	res.end()
+	RESPONSE_DATA_getChallengeStatus = '{ "status" : "fail", "data" : {} }'
 });
 
 
@@ -135,7 +139,7 @@ var rfidreader = new SerialPort(rfidReaderPath, { baudrate: 9600 , parser: seria
 if (rfidreader){
 	rfidreader.on("open", function () {
 	  	rfidreader.on('data', function(data) {	
-	  		console.log("CHECKIN: " + data);
+	  		console.log("\033[31mRFID: \033[0m" + data);
  			RFID_KEY = data;	
 	  	});  
 	});
